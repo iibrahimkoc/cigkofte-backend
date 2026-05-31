@@ -1,0 +1,15 @@
+# Veritabanı şifreleri ve gizli anahtarlar
+/config/db_config.php
+
+# IDE ve Sistem Dosyaları
+.vs/
+.idea/
+.vscode/
+*.sqlite
+Thumbs.db
+.DS_Store
+
+# Geçici dosyalar ve loglar
+/logs/*.log
+/uploads/*
+!/uploads/.gitkeep
