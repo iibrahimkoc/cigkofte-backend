@@ -113,7 +113,7 @@ class AuthService
     public function requireLogin(): void
     {
         if (!$this->isLoggedIn()) {
-            header('Location: /login.php');
+            jsonResponse(['success' => false, 'message' => 'Bu işlem için giriş yapılması gerekmektedir.'], 401);
             exit;
         }
     }
@@ -159,6 +159,20 @@ class AuthService
     private function startSession(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
+            $secure = strtolower((string)getenv('SESSION_SECURE')) === 'true'
+                || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+            $sameSite = getenv('SESSION_SAMESITE') ?: ($secure ? 'None' : 'Lax');
+
+            session_set_cookie_params([
+                'lifetime' => 0,
+                'path' => '/',
+                'domain' => getenv('SESSION_COOKIE_DOMAIN') ?: '',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => $sameSite,
+            ]);
+
             session_start();
         }
     }

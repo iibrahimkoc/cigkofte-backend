@@ -32,7 +32,7 @@ abstract class BaseModel
      */
     public function find(int $id): array|false
     {
-        $sql = "SELECT * FROM {$this->table} WHERE {$this->primaryKey} = :id LIMIT 1";
+        $sql = "SELECT * FROM {$this->quoteIdentifier($this->table)} WHERE {$this->quoteIdentifier($this->primaryKey)} = :id LIMIT 1";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':id' => $id]);
         return $stmt->fetch();
@@ -45,7 +45,7 @@ abstract class BaseModel
      */
     public function findAll(): array
     {
-        $sql = "SELECT * FROM {$this->table}";
+        $sql = "SELECT * FROM {$this->quoteIdentifier($this->table)}";
         $stmt = $this->db->query($sql);
         return $stmt->fetchAll();
     }
@@ -62,12 +62,12 @@ abstract class BaseModel
         $params  = [];
 
         foreach ($conditions as $column => $value) {
-            $clauses[]           = "{$column} = :{$column}";
+            $clauses[]           = "{$this->quoteIdentifier($column)} = :{$column}";
             $params[":{$column}"] = $value;
         }
 
         $whereClause = implode(' AND ', $clauses);
-        $sql = "SELECT * FROM {$this->table} WHERE {$whereClause}";
+        $sql = "SELECT * FROM {$this->quoteIdentifier($this->table)} WHERE {$whereClause}";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -82,10 +82,10 @@ abstract class BaseModel
      */
     public function create(array $data): int
     {
-        $columns      = implode(', ', array_keys($data));
+        $columns      = implode(', ', array_map([$this, 'quoteIdentifier'], array_keys($data)));
         $placeholders = implode(', ', array_map(fn($col) => ":{$col}", array_keys($data)));
 
-        $sql = "INSERT INTO {$this->table} ({$columns}) VALUES ({$placeholders})";
+        $sql = "INSERT INTO {$this->quoteIdentifier($this->table)} ({$columns}) VALUES ({$placeholders})";
 
         $params = [];
         foreach ($data as $col => $val) {
@@ -111,12 +111,12 @@ abstract class BaseModel
         $params     = [':id' => $id];
 
         foreach ($data as $col => $val) {
-            $setClauses[]      = "{$col} = :{$col}";
+            $setClauses[]      = "{$this->quoteIdentifier($col)} = :{$col}";
             $params[":{$col}"] = $val;
         }
 
         $setString = implode(', ', $setClauses);
-        $sql = "UPDATE {$this->table} SET {$setString} WHERE {$this->primaryKey} = :id";
+        $sql = "UPDATE {$this->quoteIdentifier($this->table)} SET {$setString} WHERE {$this->quoteIdentifier($this->primaryKey)} = :id";
 
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($params);
@@ -130,8 +130,13 @@ abstract class BaseModel
      */
     public function delete(int $id): bool
     {
-        $sql = "DELETE FROM {$this->table} WHERE {$this->primaryKey} = :id";
+        $sql = "DELETE FROM {$this->quoteIdentifier($this->table)} WHERE {$this->quoteIdentifier($this->primaryKey)} = :id";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([':id' => $id]);
+    }
+
+    protected function quoteIdentifier(string $identifier): string
+    {
+        return '`' . str_replace('`', '``', $identifier) . '`';
     }
 }

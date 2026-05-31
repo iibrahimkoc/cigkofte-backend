@@ -75,7 +75,7 @@ class RaporController
                 FROM SiparisDetay sd
                 INNER JOIN UrunBoyut ub ON sd.BoyutID = ub.BoyutID
                 INNER JOIN Urun u ON ub.UrunID = u.UrunID
-                GROUP BY sd.BoyutID
+                GROUP BY sd.BoyutID, u.Ad, ub.BoyutAdi
                 ORDER BY total_quantity_sold DESC
                 LIMIT 10
             ");

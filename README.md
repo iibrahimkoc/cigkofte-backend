@@ -49,22 +49,57 @@ cigkofte-backend/
 - **FEFO Lot Takibi** — Son kullanma tarihi en yakın olan parti önce tükenir
 - **PHP Session** — Oturum yönetimi, sadece Admin/Personel erişimi
 
-## Render Deploy
+## Render + Aiven Kurulum
 
-Bu proje Render'da Docker runtime ile çalışacak şekilde hazırlanmıştır.
+### 1. Aiven veritabanını hazırla
 
-1. Render Dashboard > New > Web Service
-2. GitHub repo olarak `iibrahimkoc/cigkofte-backend` seçilir.
-3. Runtime/Language: `Docker`
-4. Environment Variables:
-   - `DB_HOST`
-   - `DB_PORT`
-   - `DB_NAME`
-   - `DB_USER`
-   - `DB_PASS`
-   - `DB_CHARSET` (opsiyonel, varsayılan: `utf8mb4`)
+Aiven MySQL servisinde `defaultdb` içine önce şemayı import et:
 
-Local geliştirme için `config/db_config.example.php` dosyasını `config/db_config.php` olarak kopyalayıp kendi veritabanı bilgilerinle doldurabilirsin. `config/db_config.php` git'e eklenmez.
+```bash
+mysql --host=HOST --port=PORT --user=USER --password --ssl-mode=REQUIRED defaultdb < database/schema.sql
+```
+
+İlk admin kullanıcısını eklemek için:
+
+```bash
+mysql --host=HOST --port=PORT --user=USER --password --ssl-mode=REQUIRED defaultdb < database/seed_admin.sql
+```
+
+Geçici giriş:
+
+- Eposta: `admin@example.com`
+- Şifre: `password`
+
+Canlıya aldıktan sonra bu şifreyi hemen değiştir.
+
+### 2. Render Web Service oluştur
+
+- Runtime/Language: `Docker`
+- Branch: deploy edeceğin branch
+- Dockerfile: proje kökündeki `Dockerfile`
+
+Render Environment Variables:
+
+```text
+MYSQL_URI=mysql://USER:PASSWORD@HOST:PORT/defaultdb?ssl-mode=REQUIRED
+CORS_ALLOWED_ORIGINS=https://frontend-domaininiz.com
+SESSION_SECURE=true
+SESSION_SAMESITE=None
+```
+
+`MYSQL_URI` değerini Aiven Connection information bölümündeki Service URI'den al. Parolayı repoya yazma.
+
+### 3. Kontrol endpointleri
+
+Deploy sonrası şu adresler çalışmalı:
+
+```text
+GET /
+GET /health
+GET /api/urunler
+```
+
+Frontend ayrı domaindeyse API çağrılarında cookie için credentials/include açık olmalı.
 
 ## Stok Akışı
 

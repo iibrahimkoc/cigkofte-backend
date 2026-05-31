@@ -11,8 +11,14 @@ ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/logs/error.log');
 
 // CORS Başlıkları (Frontend bağlantısı için kritik önem taşır)
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-header("Access-Control-Allow-Origin: $origin");
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOrigins = array_filter(array_map('trim', explode(',', getenv('CORS_ALLOWED_ORIGINS') ?: '')));
+if ($origin !== '' && (empty($allowedOrigins) || in_array($origin, $allowedOrigins, true))) {
+    header("Access-Control-Allow-Origin: $origin");
+    header('Vary: Origin');
+} elseif ($origin === '') {
+    header('Access-Control-Allow-Origin: *');
+}
 header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
@@ -56,6 +62,23 @@ if (empty($path)) {
 // Rotaları Regex kalıplarıyla tanımla
 // Format: Regex Pattern => [HTTP Metodu => [Controller Sınıfı, Metodu]]
 $routes = [
+    '#^/$#' => [
+        'GET' => function () {
+            jsonResponse([
+                'success' => true,
+                'message' => 'Çiğköfte API çalışıyor.'
+            ]);
+        }
+    ],
+    '#^/health$#' => [
+        'GET' => function () {
+            jsonResponse([
+                'success' => true,
+                'status' => 'ok'
+            ]);
+        }
+    ],
+
     // ──────────────────────────────────────────
     // Kimlik Doğrulama (Auth)
     // ──────────────────────────────────────────
@@ -169,17 +192,21 @@ foreach ($routes as $pattern => $methods) {
         $matched = true;
         
         if (isset($methods[$requestMethod])) {
-            $routeInfo = $methods[$requestMethod];
-            $controllerName = $routeInfo[0];
-            $controllerMethod = $routeInfo[1];
-            
-            // İlk eşleşmeyi (tam metin) diziden çıkar, parametreleri bırak (örn. ID)
-            array_shift($matches);
-            
             try {
-                $controller = new $controllerName();
-                // Parametreleri metoda argüman olarak geç ve çalıştır
-                call_user_func_array([$controller, $controllerMethod], $matches);
+                $routeInfo = $methods[$requestMethod];
+
+                // İlk eşleşmeyi (tam metin) diziden çıkar, parametreleri bırak (örn. ID)
+                array_shift($matches);
+
+                if (is_callable($routeInfo)) {
+                    call_user_func_array($routeInfo, $matches);
+                } else {
+                    $controllerName = $routeInfo[0];
+                    $controllerMethod = $routeInfo[1];
+                    $controller = new $controllerName();
+                    // Parametreleri metoda argüman olarak geç ve çalıştır
+                    call_user_func_array([$controller, $controllerMethod], $matches);
+                }
             } catch (Exception $e) {
                 error_log('[Router Error] ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
                 jsonResponse([

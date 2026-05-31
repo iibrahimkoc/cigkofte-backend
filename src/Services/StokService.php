@@ -45,6 +45,7 @@ class StokService
     public function siparisIcinStokDus(int $boyutId, int $adet, array $secenekIds, int $siparisId): array
     {
         $db = Database::getInstance();
+        $startedTransaction = false;
         $malzemeIhtiyac = []; // [MalzemeID => toplam miktar]
 
         // 1. Reçeteden temel malzemeleri topla
@@ -90,19 +91,26 @@ class StokService
 
         // 4. Transaction içinde FEFO ile stok düş
         try {
-            $db->beginTransaction();
+            if (!$db->getConnection()->inTransaction()) {
+                $db->beginTransaction();
+                $startedTransaction = true;
+            }
             $hareketDetaylar = [];
 
             foreach ($malzemeIhtiyac as $malzemeId => $gerekliMiktar) {
                 $result = $this->fefoStokDus($malzemeId, $gerekliMiktar, $siparisId);
                 if (!$result['success']) {
-                    $db->rollback();
+                    if ($startedTransaction) {
+                        $db->rollback();
+                    }
                     return $result;
                 }
                 $hareketDetaylar = array_merge($hareketDetaylar, $result['details']);
             }
 
-            $db->commit();
+            if ($startedTransaction) {
+                $db->commit();
+            }
 
             return [
                 'success' => true,
@@ -110,7 +118,9 @@ class StokService
                 'details' => $hareketDetaylar
             ];
         } catch (\Exception $e) {
-            $db->rollback();
+            if ($startedTransaction && $db->getConnection()->inTransaction()) {
+                $db->rollback();
+            }
             error_log('[StokService] Stok düşme hatası: ' . $e->getMessage());
             return [
                 'success' => false,

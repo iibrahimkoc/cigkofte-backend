@@ -1,0 +1,137 @@
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+CREATE TABLE IF NOT EXISTS Kullanici (
+    KullaniciID INT AUTO_INCREMENT PRIMARY KEY,
+    Eposta VARCHAR(190) NOT NULL UNIQUE,
+    Sifre VARCHAR(255) NOT NULL,
+    AdSoyad VARCHAR(150) NOT NULL,
+    Rol ENUM('Admin', 'Personel', 'Musteri') NOT NULL DEFAULT 'Personel',
+    Telefon VARCHAR(30) NULL,
+    OlusturmaTarihi TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS Kategori (
+    KategoriID INT AUTO_INCREMENT PRIMARY KEY,
+    Ad VARCHAR(120) NOT NULL UNIQUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS Urun (
+    UrunID INT AUTO_INCREMENT PRIMARY KEY,
+    KategoriID INT NOT NULL,
+    Ad VARCHAR(160) NOT NULL,
+    Aciklama TEXT NULL,
+    TemelFiyat DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    AktifMi TINYINT(1) NOT NULL DEFAULT 1,
+    CONSTRAINT fk_urun_kategori FOREIGN KEY (KategoriID) REFERENCES Kategori(KategoriID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS UrunBoyut (
+    BoyutID INT AUTO_INCREMENT PRIMARY KEY,
+    UrunID INT NOT NULL,
+    BoyutAdi VARCHAR(80) NOT NULL,
+    Fiyat DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    UNIQUE KEY uq_urun_boyut (UrunID, BoyutAdi),
+    CONSTRAINT fk_boyut_urun FOREIGN KEY (UrunID) REFERENCES Urun(UrunID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS SecenekGrubu (
+    SecenekGrubuID INT AUTO_INCREMENT PRIMARY KEY,
+    Ad VARCHAR(120) NOT NULL,
+    ZorunluMu TINYINT(1) NOT NULL DEFAULT 0,
+    CokluSecimMi TINYINT(1) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS Secenek (
+    SecenekID INT AUTO_INCREMENT PRIMARY KEY,
+    SecenekGrubuID INT NOT NULL,
+    Ad VARCHAR(120) NOT NULL,
+    EkFiyat DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    AktifMi TINYINT(1) NOT NULL DEFAULT 1,
+    CONSTRAINT fk_secenek_grup FOREIGN KEY (SecenekGrubuID) REFERENCES SecenekGrubu(SecenekGrubuID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS Malzeme (
+    MalzemeID INT AUTO_INCREMENT PRIMARY KEY,
+    Ad VARCHAR(160) NOT NULL UNIQUE,
+    Birim VARCHAR(40) NOT NULL DEFAULT 'gram',
+    ToplamStok DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+    KritikStok DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+    AktifMi TINYINT(1) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS MalzemeParti (
+    PartiID INT AUTO_INCREMENT PRIMARY KEY,
+    MalzemeID INT NOT NULL,
+    LotNo VARCHAR(120) NOT NULL,
+    Miktar DECIMAL(12,3) NOT NULL,
+    KalanMiktar DECIMAL(12,3) NOT NULL,
+    AlimTarihi DATE NOT NULL,
+    SonKullanmaTarihi DATE NOT NULL,
+    UNIQUE KEY uq_malzeme_lot (MalzemeID, LotNo),
+    CONSTRAINT fk_parti_malzeme FOREIGN KEY (MalzemeID) REFERENCES Malzeme(MalzemeID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS Recete (
+    ReceteID INT AUTO_INCREMENT PRIMARY KEY,
+    BoyutID INT NOT NULL,
+    MalzemeID INT NOT NULL,
+    KullanilanMiktar DECIMAL(12,3) NOT NULL,
+    UNIQUE KEY uq_recete_boyut_malzeme (BoyutID, MalzemeID),
+    CONSTRAINT fk_recete_boyut FOREIGN KEY (BoyutID) REFERENCES UrunBoyut(BoyutID) ON DELETE CASCADE,
+    CONSTRAINT fk_recete_malzeme FOREIGN KEY (MalzemeID) REFERENCES Malzeme(MalzemeID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS SecenekMalzemeKullanim (
+    KullanimID INT AUTO_INCREMENT PRIMARY KEY,
+    SecenekID INT NOT NULL,
+    MalzemeID INT NOT NULL,
+    KullanilanMiktar DECIMAL(12,3) NOT NULL,
+    UNIQUE KEY uq_secenek_malzeme (SecenekID, MalzemeID),
+    CONSTRAINT fk_smk_secenek FOREIGN KEY (SecenekID) REFERENCES Secenek(SecenekID) ON DELETE CASCADE,
+    CONSTRAINT fk_smk_malzeme FOREIGN KEY (MalzemeID) REFERENCES Malzeme(MalzemeID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS Siparis (
+    SiparisID INT AUTO_INCREMENT PRIMARY KEY,
+    KullaniciID INT NOT NULL,
+    ToplamTutar DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    TeslimatAdresi TEXT NOT NULL,
+    Not TEXT NULL,
+    Durum ENUM('Hazirlaniyor', 'Yolda', 'TeslimEdildi', 'IptalEdildi') NOT NULL DEFAULT 'Hazirlaniyor',
+    Tarih TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_siparis_kullanici FOREIGN KEY (KullaniciID) REFERENCES Kullanici(KullaniciID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS SiparisDetay (
+    SiparisDetayID INT AUTO_INCREMENT PRIMARY KEY,
+    SiparisID INT NOT NULL,
+    BoyutID INT NOT NULL,
+    Adet INT NOT NULL,
+    BirimFiyat DECIMAL(10,2) NOT NULL,
+    AraToplam DECIMAL(10,2) NOT NULL,
+    CONSTRAINT fk_detay_siparis FOREIGN KEY (SiparisID) REFERENCES Siparis(SiparisID) ON DELETE CASCADE,
+    CONSTRAINT fk_detay_boyut FOREIGN KEY (BoyutID) REFERENCES UrunBoyut(BoyutID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS SiparisDetaySecenek (
+    SiparisDetaySecenekID INT AUTO_INCREMENT PRIMARY KEY,
+    SiparisDetayID INT NOT NULL,
+    SecenekID INT NOT NULL,
+    CONSTRAINT fk_sds_detay FOREIGN KEY (SiparisDetayID) REFERENCES SiparisDetay(SiparisDetayID) ON DELETE CASCADE,
+    CONSTRAINT fk_sds_secenek FOREIGN KEY (SecenekID) REFERENCES Secenek(SecenekID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS StokHareket (
+    StokHareketID INT AUTO_INCREMENT PRIMARY KEY,
+    MalzemeID INT NOT NULL,
+    PartiID INT NULL,
+    HareketTuru ENUM('Giris', 'Cikis') NOT NULL,
+    Miktar DECIMAL(12,3) NOT NULL,
+    Aciklama TEXT NULL,
+    Tarih TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_hareket_malzeme FOREIGN KEY (MalzemeID) REFERENCES Malzeme(MalzemeID),
+    CONSTRAINT fk_hareket_parti FOREIGN KEY (PartiID) REFERENCES MalzemeParti(PartiID) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+SET FOREIGN_KEY_CHECKS = 1;
