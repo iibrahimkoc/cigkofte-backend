@@ -49,6 +49,23 @@ cigkofte-backend/
 - **FEFO Lot Takibi** — Son kullanma tarihi en yakın olan parti önce tükenir
 - **PHP Session** — Oturum yönetimi, sadece Admin/Personel erişimi
 
+## Render Deploy
+
+Bu proje Render'da Docker runtime ile çalışacak şekilde hazırlanmıştır.
+
+1. Render Dashboard > New > Web Service
+2. GitHub repo olarak `iibrahimkoc/cigkofte-backend` seçilir.
+3. Runtime/Language: `Docker`
+4. Environment Variables:
+   - `DB_HOST`
+   - `DB_PORT`
+   - `DB_NAME`
+   - `DB_USER`
+   - `DB_PASS`
+   - `DB_CHARSET` (opsiyonel, varsayılan: `utf8mb4`)
+
+Local geliştirme için `config/db_config.example.php` dosyasını `config/db_config.php` olarak kopyalayıp kendi veritabanı bilgilerinle doldurabilirsin. `config/db_config.php` git'e eklenmez.
+
 ## Stok Akışı
 
 ```

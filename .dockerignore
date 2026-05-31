@@ -1,0 +1,6 @@
+.git
+.DS_Store
+logs/*.log
+uploads/*
+!uploads/.gitkeep
+config/db_config.php

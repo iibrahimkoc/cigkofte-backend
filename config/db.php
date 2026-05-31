@@ -10,7 +10,24 @@
  *   $stmt->execute();
  */
 
-require_once __DIR__ . '/db_config.php';
+$localConfig = __DIR__ . '/db_config.php';
+if (file_exists($localConfig)) {
+    require_once $localConfig;
+}
+
+$requiredEnvVars = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS'];
+foreach ($requiredEnvVars as $envVar) {
+    if (!defined($envVar) && getenv($envVar) === false) {
+        throw new RuntimeException("Eksik veritabanı ayarı: {$envVar}");
+    }
+}
+
+defined('DB_HOST') || define('DB_HOST', getenv('DB_HOST'));
+defined('DB_PORT') || define('DB_PORT', getenv('DB_PORT') ?: '3306');
+defined('DB_NAME') || define('DB_NAME', getenv('DB_NAME'));
+defined('DB_USER') || define('DB_USER', getenv('DB_USER'));
+defined('DB_PASS') || define('DB_PASS', getenv('DB_PASS'));
+defined('DB_CHARSET') || define('DB_CHARSET', getenv('DB_CHARSET') ?: 'utf8mb4');
 
 class Database
 {
